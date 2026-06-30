@@ -1,0 +1,6 @@
+{
+  "name": "PantauPosko",
+  "description": "Pantau Cepat, Bantu Tepat. Aplikasi manajemen posko untuk melacak logistik, relawan, dan lokasi pemetaan posko.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
