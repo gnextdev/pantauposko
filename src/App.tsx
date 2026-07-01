@@ -2296,7 +2296,7 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
                 <h4 className="text-white text-lg font-semibold mb-4">Open Source</h4>
                 <ul className="space-y-3 text-sm">
                   <li><a href="#" className="hover:text-white transition-colors">Download</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors">Github</a></li>
+                  <li><a href="https://github.com/gnextdev/pantauposko" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Github</a></li>
                 </ul>
               </div>
             </div>
