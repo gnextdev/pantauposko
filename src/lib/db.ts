@@ -43,6 +43,37 @@ const mockSiaran = [
 ];
 
 export const db = {
+  auth: {
+    signIn: async (usernameOrEmail: string, password: string) => {
+      if (isSupabaseConfigured) {
+        // format as email if only username is provided
+        const email = usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@pantauposko.id`;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        
+        if (data.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*, posko(*)')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profileError) throw profileError;
+          return profile;
+        }
+      }
+      
+      // Fallback offline users
+      if (usernameOrEmail === 'admin' && password === 'admin123') {
+        return { id: 'admin-id', username: 'admin', full_name: 'Super Admin Utama', role: 'superadmin', posko_id: null };
+      } else if (usernameOrEmail === 'relawan' && password === 'relawan123') {
+        return { id: 'relawan-id', username: 'relawan', full_name: 'Relawan Posko Pusat', role: 'relawan', posko_id: 1 };
+      }
+      
+      throw new Error('Username atau password salah.');
+    }
+  },
+
   posko: {
     getAll: async () => {
       if (isSupabaseConfigured) {

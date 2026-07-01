@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { db } from './lib/db';
 import {
   MapPin,
   Package,
@@ -82,15 +83,31 @@ const getStatusIcon = (status: string) => {
 
 export default function App() {
   const [appMode, setAppMode] = useState<'public' | 'admin'>('public');
+  const [user, setUser] = useState<any>(null);
 
   if (appMode === 'public') {
-    return <PublicPortal onLogin={() => setAppMode('admin')} />;
+    return (
+      <PublicPortal 
+        onLogin={(userData) => {
+          setUser(userData);
+          setAppMode('admin');
+        }} 
+      />
+    );
   }
 
-  return <AdminDashboard onLogout={() => setAppMode('public')} />;
+  return (
+    <AdminDashboard 
+      user={user} 
+      onLogout={() => {
+        setUser(null);
+        setAppMode('public');
+      }} 
+    />
+  );
 }
 
-function AdminDashboard({ onLogout }: { onLogout: () => void }) {
+function AdminDashboard({ user, onLogout }: { user: any, onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
@@ -107,14 +124,17 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <NavItem icon={<Tent />} label="Pengungsi" isActive={activeTab === 'pengungsi'} onClick={() => setActiveTab('pengungsi')} />
           <NavItem icon={<Package />} label="Logistik" isActive={activeTab === 'logistik'} onClick={() => setActiveTab('logistik')} />
           <NavItem icon={<Users />} label="Relawan" isActive={activeTab === 'relawan'} onClick={() => setActiveTab('relawan')} />
-          <NavItem icon={<UserCog />} label="Manajemen SDM" isActive={activeTab === 'sdm'} onClick={() => setActiveTab('sdm')} />
+          {user?.role === 'superadmin' && <NavItem icon={<UserCog />} label="Manajemen SDM" isActive={activeTab === 'sdm'} onClick={() => setActiveTab('sdm')} />}
           <NavItem icon={<Wallet />} label="Keuangan" isActive={activeTab === 'keuangan'} onClick={() => setActiveTab('keuangan')} />
           <NavItem icon={<MapPin />} label="Peta Lokasi" isActive={activeTab === 'peta'} onClick={() => setActiveTab('peta')} />
           <NavItem icon={<Megaphone />} label="Siaran Posko" isActive={activeTab === 'siaran'} onClick={() => setActiveTab('siaran')} />
           <NavItem icon={<Newspaper />} label="Berita Bencana" isActive={activeTab === 'berita'} onClick={() => setActiveTab('berita')} />
         </nav>
         <div className="p-4 border-t border-slate-800">
-           <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors">
+           <div className="px-4 py-2 text-xs text-slate-400">
+             Logged in as: <strong className="text-white block truncate">{user?.full_name} ({user?.role})</strong>
+           </div>
+           <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors mt-2">
               Kembali ke Portal
            </button>
         </div>
@@ -130,18 +150,20 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
               <Bell className="w-5 h-5" />
             </button>
-            <div className="w-8 h-8 bg-slate-300 rounded-full border-2 border-slate-400"></div>
+            <div className="w-8 h-8 bg-slate-300 rounded-full border-2 border-slate-400 flex items-center justify-center font-bold text-slate-700">
+              {user?.username?.substring(0, 2).toUpperCase()}
+            </div>
           </div>
         </header>
         <div className="flex-1 overflow-auto p-6">
-          {activeTab === 'dashboard' && <DashboardView />}
-          {activeTab === 'pengungsi' && <PengungsiView />}
-          {activeTab === 'logistik' && <LogistikView />}
-          {activeTab === 'peta' && <PetaView />}
-          {activeTab === 'relawan' && <RelawanView />}
-          {activeTab === 'sdm' && <SdmView />}
-          {activeTab === 'keuangan' && <KeuanganView />}
-          {activeTab === 'siaran' && <SiaranView />}
+          {activeTab === 'dashboard' && <DashboardView user={user} />}
+          {activeTab === 'pengungsi' && <PengungsiView user={user} />}
+          {activeTab === 'logistik' && <LogistikView user={user} />}
+          {activeTab === 'peta' && <PetaView user={user} />}
+          {activeTab === 'relawan' && <RelawanView user={user} />}
+          {activeTab === 'sdm' && user?.role === 'superadmin' && <SdmView user={user} />}
+          {activeTab === 'keuangan' && <KeuanganView user={user} />}
+          {activeTab === 'siaran' && <SiaranView user={user} />}
           {activeTab === 'berita' && <BeritaView />}
         </div>
       </main>
@@ -175,15 +197,37 @@ function MapZoomTo({ position, zoom = 15 }: { position: [number, number] | null,
   return null;
 }
 
-function DashboardView() {
+function DashboardView({ user }: { user: any }) {
   const [selectedPoskoPos, setSelectedPoskoPos] = useState<[number, number] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'Semua' | 'Aktif' | 'Siaga'>('Semua');
+  const [poskoData, setPoskoData] = useState<any[]>([]);
 
-  const poskoData = [
-    { id: 1, name: 'Posko Siaga Jakarta Pusat', lat: -6.1751, lng: 106.8272, status: 'Aktif', currentLoad: 120, maxCapacity: 150 },
-    { id: 2, name: 'Posko Bantuan Jakarta Selatan', lat: -6.2416, lng: 106.8108, status: 'Siaga', currentLoad: 45, maxCapacity: 100 },
-    { id: 3, name: 'Posko Relawan Jakarta Timur', lat: -6.2250, lng: 106.9004, status: 'Aktif', currentLoad: 190, maxCapacity: 200 },
-  ];
+  useEffect(() => {
+    db.posko.getAll().then(data => {
+      let filtered = data.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        lat: p.lat,
+        lng: p.lng,
+        status: p.status,
+        currentLoad: p.current_load ?? p.currentLoad ?? 0,
+        maxCapacity: p.max_capacity ?? p.maxCapacity ?? 100,
+        status_approval: p.status_approval
+      }));
+
+      // Only show approved poskos to relawan unless it's their own posko
+      if (user?.role === 'relawan' && user?.posko_id) {
+        filtered = filtered.filter(p => p.id === Number(user.posko_id));
+      } else if (user?.role === 'superadmin') {
+        // Superadmin shows all
+      } else {
+        // Only show approved
+        filtered = filtered.filter(p => p.status_approval === 'approved');
+      }
+
+      setPoskoData(filtered);
+    });
+  }, [user]);
 
   const filteredPoskoData = poskoData.filter(posko => statusFilter === 'Semua' || posko.status === statusFilter);
 
@@ -302,18 +346,20 @@ function StatCard({ title, value, icon, trend, alert }: { title: string, value: 
   );
 }
 
-function LogistikView() {
+function LogistikView({ user }: { user: any }) {
   const [activeSubTab, setActiveSubTab] = useState('daftar');
   const [filterKategori, setFilterKategori] = useState('Semua');
+  const [logistik, setLogistik] = useState<any[]>([]);
 
-  const logistik = [
-    { id: 1, nama: 'Beras', kategori: 'Pangan', stok: 500, satuan: 'kg', status: 'Aman' },
-    { id: 2, nama: 'Mie Instan', kategori: 'Pangan', stok: 120, satuan: 'dus', status: 'Menipis' },
-    { id: 3, nama: 'Air Mineral', kategori: 'Pangan', stok: 300, satuan: 'dus', status: 'Aman' },
-    { id: 4, nama: 'Selimut', kategori: 'Sandang', stok: 45, satuan: 'pcs', status: 'Kritis' },
-    { id: 5, nama: 'Kotak P3K', kategori: 'P3K', stok: 20, satuan: 'box', status: 'Kritis' },
-    { id: 6, nama: 'Obat Demam', kategori: 'P3K', stok: 150, satuan: 'strip', status: 'Aman' },
-  ];
+  useEffect(() => {
+    db.logistik.getAll().then(data => {
+      let filtered = data;
+      if (user?.role === 'relawan' && user?.posko_id) {
+        filtered = data.filter((item: any) => Number(item.posko_id) === Number(user.posko_id));
+      }
+      setLogistik(filtered);
+    });
+  }, [user]);
 
   const filteredLogistik = filterKategori === 'Semua' 
     ? logistik 
@@ -915,33 +961,35 @@ function RelawanView() {
   );
 }
 
-function PengungsiView() {
-  const [pengungsi, setPengungsi] = useState([
-    { id: 1, nama: 'Ahmad Dahlan', nik: '3171234567890001', usia: 45, gender: 'L', kondisi: 'Sehat', tenda: 'Tenda A', statusAbsen: 'Hadir',
-      riwayatKesehatan: [
-        { tanggal: '2026-06-25', status: 'Sakit Ringan', catatan: 'Batuk pilek biasa', petugas: 'dr. Ratna' },
-        { tanggal: '2026-06-28', status: 'Sehat', catatan: 'Sudah membaik, diberi vitamin', petugas: 'Budi Santoso' }
-      ]
-    },
-    { id: 2, nama: 'Siti Rohmah', nik: '3171234567890002', usia: 40, gender: 'P', kondisi: 'Hamil', tenda: 'Tenda B', statusAbsen: 'Hadir',
-      riwayatKesehatan: [
-        { tanggal: '2026-06-26', status: 'Hamil', catatan: 'Kehamilan trimester 2, butuh asupan gizi khusus', petugas: 'Bidan Ningsih' }
-      ]
-    },
-    { id: 3, nama: 'Budi Kecil', nik: '-', usia: 8, gender: 'L', kondisi: 'Sakit Ringan', tenda: 'Tenda A', statusAbsen: 'Hadir',
-      riwayatKesehatan: [
-        { tanggal: '2026-06-29', status: 'Sakit Ringan', catatan: 'Demam ringan sejak semalam', petugas: 'dr. Ratna' }
-      ]
-    },
-    { id: 4, nama: 'Mbah Surip', nik: '3171234567890004', usia: 72, gender: 'L', kondisi: 'Sakit Berat', tenda: 'Klinik Darurat', statusAbsen: 'Perawatan',
-      riwayatKesehatan: [
-        { tanggal: '2026-06-27', status: 'Sakit Ringan', catatan: 'Mengeluh pusing dan tensi tinggi', petugas: 'dr. Ratna' },
-        { tanggal: '2026-06-29', status: 'Sakit Berat', catatan: 'Tensi 180/100, observasi di klinik darurat', petugas: 'dr. Handoko' }
-      ]
-    },
-  ]);
+function PengungsiView({ user }: { user: any }) {
+  const [pengungsi, setPengungsi] = useState<any[]>([]);
   const [selectedPengungsi, setSelectedPengungsi] = useState<any>(null);
   const [activeSubTab, setActiveSubTab] = useState('daftar');
+
+  const fetchPengungsi = () => {
+    db.pengungsi.getAll().then(data => {
+      let filtered = data.map((p: any) => ({
+        id: p.id,
+        nama: p.name,
+        nik: p.nik ?? '-',
+        usia: p.age ?? p.usia ?? 0,
+        gender: p.gender,
+        kondisi: p.status ?? p.kondisi ?? 'Sehat',
+        tenda: p.tenda ?? 'Tenda Utama',
+        statusAbsen: p.status_absen ?? p.statusAbsen ?? 'Hadir',
+        posko_id: p.posko_id,
+        riwayatKesehatan: p.riwayatKesehatan ?? []
+      }));
+      if (user?.role === 'relawan' && user?.posko_id) {
+        filtered = filtered.filter(p => Number(p.posko_id) === Number(user.posko_id));
+      }
+      setPengungsi(filtered);
+    });
+  };
+
+  useEffect(() => {
+    fetchPengungsi();
+  }, [user]);
 
   const [newPengungsi, setNewPengungsi] = useState({
     nama: '',
@@ -976,29 +1024,31 @@ function PengungsiView() {
   const handleSavePengungsi = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      setPengungsi([...pengungsi, {
-        id: pengungsi.length + 1,
-        nama: newPengungsi.nama,
+      const dataToSave = {
+        name: newPengungsi.nama,
         nik: newPengungsi.nik,
-        usia: parseInt(newPengungsi.usia) || 0,
+        age: parseInt(newPengungsi.usia) || 0,
         gender: newPengungsi.gender,
-        kondisi: newPengungsi.kondisi,
-        tenda: newPengungsi.tenda || 'Tenda Utama',
-        statusAbsen: 'Hadir',
-        riwayatKesehatan: []
-      }]);
-      setNewPengungsi({ nama: '', nik: '', usia: '', gender: 'L', kondisi: 'Sehat', tenda: '' });
-      setFormErrors({});
-      setActiveSubTab('daftar');
+        status: newPengungsi.kondisi,
+        posko_id: user?.posko_id || 1,
+        tenda: newPengungsi.tenda || 'Tenda Utama'
+      };
+
+      db.pengungsi.create(dataToSave).then(() => {
+        fetchPengungsi();
+        setNewPengungsi({ nama: '', nik: '', usia: '', gender: 'L', kondisi: 'Sehat', tenda: '' });
+        setFormErrors({});
+        setActiveSubTab('daftar');
+      });
     }
   };
 
-  const handleKondisiChange = (id: number, newKondisi: string) => {
-    setPengungsi(pengungsi.map(p => p.id === id ? { ...p, kondisi: newKondisi } : p));
+  const handleKondisiChange = (id: number | string, newKondisi: string) => {
+    db.pengungsi.update(id, { status: newKondisi }).then(() => fetchPengungsi());
   };
 
-  const handleAbsenChange = (id: number, newAbsen: string) => {
-    setPengungsi(pengungsi.map(p => p.id === id ? { ...p, statusAbsen: newAbsen } : p));
+  const handleAbsenChange = (id: number | string, newAbsen: string) => {
+    db.pengungsi.update(id, { status_absen: newAbsen }).then(() => fetchPengungsi());
   };
 
   return (
@@ -1223,14 +1273,32 @@ function PengungsiView() {
   );
 }
 
-function KeuanganView() {
+function KeuanganView({ user }: { user: any }) {
   const [activeSubTab, setActiveSubTab] = useState('ringkasan');
-  const [transaksi, setTransaksi] = useState([
-    { id: 1, tanggal: '24 Okt 2023', tipe: 'Pemasukan', kategori: 'Donasi Tunai', nominal: 5000000, deskripsi: 'Donasi dari PT Maju Bersama', bukti: 'Ada' },
-    { id: 2, tanggal: '25 Okt 2023', tipe: 'Pengeluaran', kategori: 'Logistik', nominal: 1500000, deskripsi: 'Pembelian beras dan minyak goreng', bukti: 'Ada' },
-    { id: 3, tanggal: '26 Okt 2023', tipe: 'Pengeluaran', kategori: 'Operasional', nominal: 300000, deskripsi: 'Bensin kendaraan evakuasi', bukti: 'Ada' },
-    { id: 4, tanggal: '27 Okt 2023', tipe: 'Pemasukan', kategori: 'Dana Desa', nominal: 10000000, deskripsi: 'Alokasi dana tanggap darurat desa', bukti: 'Ada' },
-  ]);
+  const [transaksi, setTransaksi] = useState<any[]>([]);
+
+  const fetchTransaksi = () => {
+    db.keuangan.getAll().then(data => {
+      let filtered = data.map((t: any) => ({
+        id: t.id,
+        tanggal: t.tanggal ? new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+        tipe: t.tipe,
+        kategori: t.kategori,
+        nominal: Number(t.nominal),
+        deskripsi: t.deskripsi,
+        bukti: t.bukti_url ? 'Ada' : 'Tidak Ada',
+        posko_id: t.posko_id
+      }));
+      if (user?.role === 'relawan' && user?.posko_id) {
+        filtered = filtered.filter(t => Number(t.posko_id) === Number(user.posko_id));
+      }
+      setTransaksi(filtered);
+    });
+  };
+
+  useEffect(() => {
+    fetchTransaksi();
+  }, [user]);
 
   const [newTransaksi, setNewTransaksi] = useState({
     tipe: 'Pemasukan',
@@ -1255,20 +1323,33 @@ function KeuanganView() {
   const handleSaveTransaksi = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      setTransaksi([...transaksi, {
-        id: transaksi.length + 1,
-        tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      const dataToSave = {
         tipe: newTransaksi.tipe,
         kategori: newTransaksi.kategori,
         nominal: parseFloat(newTransaksi.nominal),
         deskripsi: newTransaksi.deskripsi,
-        bukti: 'Ada'
-      }]);
-      setNewTransaksi({ tipe: 'Pemasukan', kategori: 'Donasi Tunai', nominal: '', deskripsi: '' });
-      setFormErrors({});
-      setActiveSubTab('ringkasan');
+        posko_id: user?.posko_id || 1,
+        tanggal: new Date().toISOString().split('T')[0]
+      };
+
+      db.keuangan.create(dataToSave).then(() => {
+        fetchTransaksi();
+        setNewTransaksi({ tipe: 'Pemasukan', kategori: 'Donasi Tunai', nominal: '', deskripsi: '' });
+        setFormErrors({});
+        setActiveSubTab('ringkasan');
+      });
     }
   };
+
+  const totalPemasukan = transaksi
+    .filter(t => t.tipe === 'Pemasukan')
+    .reduce((sum, t) => sum + t.nominal, 0);
+
+  const totalPengeluaran = transaksi
+    .filter(t => t.tipe === 'Pengeluaran')
+    .reduce((sum, t) => sum + t.nominal, 0);
+
+  const saldo = totalPemasukan - totalPengeluaran;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1295,21 +1376,21 @@ function KeuanganView() {
                 <div className="p-3 bg-blue-50 rounded-lg"><Wallet className="text-blue-500 w-6 h-6" /></div>
               </div>
               <h4 className="text-slate-500 text-sm font-medium">Saldo Saat Ini</h4>
-              <p className="text-3xl font-bold text-slate-900 mt-1">Rp 13.200.000</p>
+              <p className="text-3xl font-bold text-slate-900 mt-1">Rp {saldo.toLocaleString('id-ID')}</p>
             </div>
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
               <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-emerald-50 rounded-lg"><TrendingUp className="text-emerald-500 w-6 h-6" /></div>
               </div>
               <h4 className="text-slate-500 text-sm font-medium">Total Pemasukan</h4>
-              <p className="text-3xl font-bold text-slate-900 mt-1">Rp 15.000.000</p>
+              <p className="text-3xl font-bold text-slate-900 mt-1">Rp {totalPemasukan.toLocaleString('id-ID')}</p>
             </div>
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
               <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-red-50 rounded-lg"><TrendingDown className="text-red-500 w-6 h-6" /></div>
               </div>
               <h4 className="text-slate-500 text-sm font-medium">Total Pengeluaran</h4>
-              <p className="text-3xl font-bold text-slate-900 mt-1">Rp 1.800.000</p>
+              <p className="text-3xl font-bold text-slate-900 mt-1">Rp {totalPengeluaran.toLocaleString('id-ID')}</p>
             </div>
           </div>
 
@@ -1417,38 +1498,61 @@ function KeuanganView() {
   );
 }
 
-function SiaranView() {
-  const [broadcasts, setBroadcasts] = useState([
-    { id: 1, waktu: 'Hari ini, 14:00', judul: 'Kebutuhan Mendesak: Selimut & Air Bersih', isi: 'Posko Siaga Jakarta Pusat saat ini sangat membutuhkan tambahan selimut dan air bersih untuk 50 pengungsi baru.', prioritas: 'Tinggi', posko: 'Posko Siaga Jakarta Pusat', status: 'Aktif' },
-    { id: 2, waktu: 'Kemarin, 09:30', judul: 'Jadwal Pemeriksaan Kesehatan', isi: 'Tim medis akan melakukan pemeriksaan kesehatan rutin di Tenda B mulai pukul 10:00. Mohon kumpul di area utama.', prioritas: 'Normal', posko: 'Semua Posko', status: 'Aktif' }
-  ]);
+function SiaranView({ user }: { user: any }) {
+  const [broadcasts, setBroadcasts] = useState<any[]>([]);
   const [judul, setJudul] = useState('');
   const [isi, setIsi] = useState('');
   const [prioritas, setPrioritas] = useState('Normal');
   const [posko, setPosko] = useState('Semua Posko');
   const [activeTab, setActiveTab] = useState('Aktif');
 
+  const fetchSiaran = () => {
+    db.siaran.getAll().then(data => {
+      let filtered = data.map((bc: any) => ({
+        id: bc.id,
+        waktu: bc.waktu ? new Date(bc.waktu).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Baru saja',
+        judul: bc.judul,
+        isi: bc.isi,
+        prioritas: bc.prioritas,
+        posko: bc.posko_id ? `Posko ID: ${bc.posko_id}` : 'Semua Posko',
+        posko_id: bc.posko_id,
+        status: bc.status
+      }));
+      if (user?.role === 'relawan' && user?.posko_id) {
+        filtered = filtered.filter(bc => !bc.posko_id || Number(bc.posko_id) === Number(user.posko_id));
+      }
+      setBroadcasts(filtered);
+    });
+  };
+
+  useEffect(() => {
+    fetchSiaran();
+  }, [user]);
+
   const handleBroadcast = (e: React.FormEvent) => {
     e.preventDefault();
     if (!judul || !isi) return;
     const newBroadcast = {
-      id: Date.now(),
-      waktu: 'Baru saja',
       judul,
       isi,
       prioritas,
-      posko,
+      posko_id: posko === 'Semua Posko' ? null : (user?.posko_id || 1),
       status: 'Aktif'
     };
-    setBroadcasts([newBroadcast, ...broadcasts]);
-    setJudul('');
-    setIsi('');
-    setPrioritas('Normal');
-    setPosko('Semua Posko');
+    db.siaran.create(newBroadcast).then(() => {
+      fetchSiaran();
+      setJudul('');
+      setIsi('');
+      setPrioritas('Normal');
+      setPosko('Semua Posko');
+    });
   };
 
-  const toggleStatus = (id: number) => {
-    setBroadcasts(broadcasts.map(bc => bc.id === id ? { ...bc, status: bc.status === 'Aktif' ? 'Diarsipkan' : 'Aktif' } : bc));
+  const toggleStatus = (id: number | string) => {
+    const current = broadcasts.find(bc => bc.id === id);
+    if (!current) return;
+    const newStatus = current.status === 'Aktif' ? 'Diarsipkan' : 'Aktif';
+    db.siaran.update(id, { status: newStatus }).then(() => fetchSiaran());
   };
 
   return (
@@ -1864,7 +1968,7 @@ function BeritaView() {
   );
 }
 
-function PublicPortal({ onLogin }: { onLogin: () => void }) {
+function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchedPos, setSearchedPos] = useState<[number, number] | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1882,12 +1986,30 @@ function PublicPortal({ onLogin }: { onLogin: () => void }) {
     jumlah: ''
   });
   const [isBencanaModalOpen, setIsBencanaModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   const [bencanaFormData, setBencanaFormData] = useState({
     jenisBencana: '',
     lokasi: '',
     dampak: ''
   });
   const [selectedBencanaLocation, setSelectedBencanaLocation] = useState<L.LatLng | null>(null);
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    db.auth.signIn(loginUsername, loginPassword)
+      .then(userData => {
+        onLogin(userData);
+        setIsLoginModalOpen(false);
+      })
+      .catch(err => {
+        setLoginError(err.message || 'Login gagal.');
+      });
+  };
 
   const poskoAktif = [
     { id: 1, name: 'Posko Siaga Jakarta Pusat', lokasi: 'Monas, Jakarta', pengungsi: 450, relawan: 45, status: 'Kritis', lat: -6.1751, lng: 106.8272, statusLabel: 'Aktif' },
@@ -1951,7 +2073,7 @@ function PublicPortal({ onLogin }: { onLogin: () => void }) {
             <span className="text-2xl font-extrabold tracking-tighter text-white">Pantauposko</span>
           </div>
           <button 
-            onClick={onLogin}
+            onClick={() => setIsLoginModalOpen(true)}
             className="text-sm font-medium bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-colors"
           >
             Masuk Admin
@@ -2340,6 +2462,47 @@ function PublicPortal({ onLogin }: { onLogin: () => void }) {
                 Kirim Laporan Bencana
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-xl font-bold text-slate-800">Masuk Portal Admin</h3>
+              <button onClick={() => setIsLoginModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <form onSubmit={handleLoginSubmit} className="p-6 space-y-4">
+              {loginError && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-100 animate-shake">
+                  {loginError}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Username / Email</label>
+                <input required type="text" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="Masukkan username atau email" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="••••••••" />
+              </div>
+              <div className="pt-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1">
+                <p className="font-semibold text-slate-700">Akun Uji Coba Offline:</p>
+                <p>• Superadmin: <strong className="text-slate-800">admin</strong> / password: <strong className="text-slate-800">admin123</strong></p>
+                <p>• Relawan: <strong className="text-slate-800">relawan</strong> / password: <strong className="text-slate-800">relawan123</strong></p>
+              </div>
+              <div className="pt-2 flex justify-end gap-3">
+                <button type="button" onClick={() => setIsLoginModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  Batal
+                </button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                  Masuk
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
