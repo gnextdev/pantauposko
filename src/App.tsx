@@ -116,7 +116,7 @@ function AdminDashboard({ user, onLogout }: { user: any, onLogout: () => void })
       <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col">
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center">
-            <span className="text-2xl font-extrabold tracking-tighter text-white">Pantauposko</span>
+            <span className="text-2xl font-extrabold tracking-tighter text-white">Pantau Posko Indonesia</span>
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
@@ -1671,10 +1671,10 @@ function SdmView() {
   const [editingUser, setEditingUser] = useState<any>(null);
 
   const [sdmData, setSdmData] = useState([
-    { id: 1, nama: 'Dr. Andi Pratama', role: 'Admin Developer', email: 'andi@pantauposko.id', kontak: '081122334455', status: 'Aktif', bergabungSejak: '2026-01-10', lokasi: '' },
+    { id: 1, nama: 'Dr. Andi Pratama', role: 'Admin Developer', email: 'andi@pantauposkoindonesia.id', kontak: '081122334455', status: 'Aktif', bergabungSejak: '2026-01-10', lokasi: '' },
     { id: 2, nama: 'Budi Santoso', role: 'Admin Posko', lokasi: 'Posko Siaga Jakarta Pusat', email: 'budi.s@posko.id', kontak: '081234567890', status: 'Aktif', bergabungSejak: '2026-06-25' },
     { id: 3, nama: 'Siti Aminah', role: 'Admin Posko', lokasi: 'Dapur Posko C', email: 'siti.a@posko.id', kontak: '081298765432', status: 'Aktif', bergabungSejak: '2026-06-25' },
-    { id: 4, nama: 'Reza Rahadian', role: 'Koordinator Lapangan', lokasi: 'Jakarta Selatan', email: 'reza@pantauposko.id', kontak: '081987654321', status: 'Aktif', bergabungSejak: '2026-03-15' },
+    { id: 4, nama: 'Reza Rahadian', role: 'Koordinator Lapangan', lokasi: 'Jakarta Selatan', email: 'reza@pantauposkoindonesia.id', kontak: '081987654321', status: 'Aktif', bergabungSejak: '2026-03-15' },
     { id: 5, nama: 'Dewi Lestari', role: 'Staff Logistik', lokasi: 'Gudang Utama', email: 'dewi.l@posko.id', kontak: '085566778899', status: 'Cuti', bergabungSejak: '2026-05-01' },
   ]);
 
@@ -2070,7 +2070,7 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
       <header className="bg-slate-900 text-white p-4 sticky top-0 z-10 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center">
-            <span className="text-2xl font-extrabold tracking-tighter text-white">Pantauposko</span>
+            <span className="text-2xl font-extrabold tracking-tighter text-white">Pantau Posko Indonesia</span>
           </div>
           <button 
             onClick={() => setIsLoginModalOpen(true)}
@@ -2085,7 +2085,7 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
         {/* Hero Section */}
         <section className="text-center space-y-6 max-w-3xl mx-auto py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h2 className="text-4xl lg:text-6xl font-extrabold tracking-tighter text-red-600">
-            Pantauposko
+            Pantau Posko Indonesia
           </h2>
           <p className="text-xl text-slate-700 font-medium mt-2">
             Pantau Cepat, Bantu Tepat.
@@ -2280,7 +2280,7 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
       <footer className="bg-[#1E2129] text-slate-300 py-16 mt-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center mb-12">
-            <span className="text-4xl font-extrabold tracking-tighter text-white">Pantauposko</span>
+            <span className="text-4xl font-extrabold tracking-tighter text-white">Pantau Posko Indonesia</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8">
             <div className="space-y-8">
@@ -2330,7 +2330,7 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
                 <span className="text-sm font-medium hover:text-white cursor-pointer transition-colors">Bahasa Indonesia ▾</span>
               </div>
               <p className="text-sm leading-relaxed text-slate-400">
-                Pantauposko adalah platform informasi terpadu untuk pemetaan titik bencana, manajemen posko relawan, dan distribusi logistik. Aplikasi ini dibuat untuk membantu koordinasi tanggap darurat secara real-time dan transparan.
+                Pantau Posko Indonesia adalah platform informasi terpadu untuk pemetaan titik bencana, manajemen posko relawan, dan distribusi logistik. Aplikasi ini dibuat untuk membantu koordinasi tanggap darurat secara real-time dan transparan.
               </p>
               <p className="text-sm leading-relaxed text-slate-400">
                 Akurasi data dan kecepatan penanganan adalah prioritas kami.
@@ -2339,7 +2339,7 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
           </div>
           
           <div className="mt-16 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
-             &copy; 2026 Pantauposko. Dibuat untuk tanggap darurat bencana.
+             &copy; 2026 Pantau Posko Indonesia. Dibuat untuk tanggap darurat bencana.
           </div>
         </div>
       </footer>

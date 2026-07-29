@@ -47,7 +47,7 @@ export const db = {
     signIn: async (usernameOrEmail: string, password: string) => {
       if (isSupabaseConfigured) {
         // format as email if only username is provided
-        const email = usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@pantauposko.id`;
+        const email = usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@pantauposkoindonesia.id`;
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         
