@@ -202,7 +202,7 @@ function DashboardView({ user }: { user: any }) {
   const [statusFilter, setStatusFilter] = useState<'Semua' | 'Aktif' | 'Siaga'>('Semua');
   const [poskoData, setPoskoData] = useState<any[]>([]);
 
-  useEffect(() => {
+  const fetchPosko = () => {
     db.posko.getAll().then(data => {
       let filtered = data.map((p: any) => ({
         id: p.id,
@@ -215,19 +215,30 @@ function DashboardView({ user }: { user: any }) {
         status_approval: p.status_approval
       }));
 
-      // Only show approved poskos to relawan unless it's their own posko
+      // For standard map views and listings, filter by approval
       if (user?.role === 'relawan' && user?.posko_id) {
         filtered = filtered.filter(p => p.id === Number(user.posko_id));
       } else if (user?.role === 'superadmin') {
-        // Superadmin shows all
+        // Superadmin shows all (but we'll separate pending ones in the UI block)
       } else {
-        // Only show approved
         filtered = filtered.filter(p => p.status_approval === 'approved');
       }
 
       setPoskoData(filtered);
     });
+  };
+
+  useEffect(() => {
+    fetchPosko();
   }, [user]);
+
+  const handleApprove = (id: number | string) => {
+    db.posko.update(id, { status_approval: 'approved' }).then(() => fetchPosko());
+  };
+
+  const handleReject = (id: number | string) => {
+    db.posko.update(id, { status_approval: 'rejected' }).then(() => fetchPosko());
+  };
 
   const filteredPoskoData = poskoData.filter(posko => statusFilter === 'Semua' || posko.status === statusFilter);
 
@@ -328,6 +339,37 @@ function DashboardView({ user }: { user: any }) {
           ))}
         </div>
       </div>
+
+      {user?.role === 'superadmin' && (
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <AlertTriangle className="text-amber-500 w-5 h-5" />
+            Pengajuan Posko Baru (Menunggu Persetujuan)
+          </h3>
+          <div className="space-y-4">
+            {poskoData.filter(p => p.status_approval === 'pending').length > 0 ? (
+              poskoData.filter(p => p.status_approval === 'pending').map(p => (
+                <div key={p.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-amber-50/50 border border-amber-100 rounded-xl gap-4">
+                  <div>
+                    <h4 className="font-bold text-slate-800">{p.name}</h4>
+                    <p className="text-xs text-slate-500 mt-1">Koordinat: {p.lat.toFixed(4)}, {p.lng.toFixed(4)} | Kapasitas: {p.maxCapacity}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleApprove(p.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                      Setujui (Approve)
+                    </button>
+                    <button onClick={() => handleReject(p.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                      Tolak
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">Tidak ada pengajuan posko baru yang pending.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2044,10 +2086,24 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Data Pengajuan:', formData, 'Lokasi Peta:', selectedLocation);
-    setIsModalOpen(false);
-    setFormData({ namaPosko: '', lokasi: '', estimasiPengungsi: '', kontak: '' });
-    setSelectedLocation(null);
+    if (!selectedLocation) return;
+    
+    const newPosko = {
+      name: formData.namaPosko,
+      lat: selectedLocation.lat,
+      lng: selectedLocation.lng,
+      status: 'Siaga',
+      status_approval: 'pending',
+      max_capacity: parseInt(formData.estimasiPengungsi) || 100,
+      current_load: 0
+    };
+
+    db.posko.create(newPosko).then(() => {
+      alert('Pengajuan posko baru berhasil dikirim dan menunggu persetujuan Superadmin.');
+      setIsModalOpen(false);
+      setFormData({ namaPosko: '', lokasi: '', estimasiPengungsi: '', kontak: '' });
+      setSelectedLocation(null);
+    });
   };
 
   const handleBencanaSubmit = (e: React.FormEvent) => {
