@@ -106,6 +106,16 @@ export const db = {
         return local[index];
       }
       return null;
+    },
+    delete: async (id: number | string) => {
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.from('posko').delete().eq('id', id);
+        if (!error) return true;
+      }
+      const local = localDb.get<any[]>('posko', mockPosko);
+      const filtered = local.filter(x => x.id !== Number(id));
+      localDb.set('posko', filtered);
+      return true;
     }
   },
 

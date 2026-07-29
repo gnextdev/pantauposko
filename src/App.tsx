@@ -121,7 +121,7 @@ function AdminDashboard({ user, onLogout }: { user: any, onLogout: () => void })
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <NavItem icon={<LayoutDashboard />} label="Dashboard" isActive={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-          {user?.role === 'superadmin' && <NavItem icon={<ShieldAlert />} label="Persetujuan Posko" isActive={activeTab === 'persetujuan'} onClick={() => setActiveTab('persetujuan')} />}
+          {user?.role === 'superadmin' && <NavItem icon={<Shield />} label="Data Posko" isActive={activeTab === 'posko'} onClick={() => setActiveTab('posko')} />}
           <NavItem icon={<Tent />} label="Pengungsi" isActive={activeTab === 'pengungsi'} onClick={() => setActiveTab('pengungsi')} />
           <NavItem icon={<Package />} label="Logistik" isActive={activeTab === 'logistik'} onClick={() => setActiveTab('logistik')} />
           <NavItem icon={<Users />} label="Relawan" isActive={activeTab === 'relawan'} onClick={() => setActiveTab('relawan')} />
@@ -145,7 +145,7 @@ function AdminDashboard({ user, onLogout }: { user: any, onLogout: () => void })
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="bg-white border-b border-slate-200 p-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold text-slate-800 capitalize">
-            {activeTab === 'peta' ? 'Peta Lokasi' : activeTab}
+            {activeTab === 'peta' ? 'Peta Lokasi' : activeTab === 'posko' ? 'Data Posko' : activeTab === 'sdm' ? 'Manajemen SDM' : activeTab}
           </h2>
           <div className="flex items-center gap-4">
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
@@ -158,7 +158,7 @@ function AdminDashboard({ user, onLogout }: { user: any, onLogout: () => void })
         </header>
         <div className="flex-1 overflow-auto p-6">
           {activeTab === 'dashboard' && <DashboardView user={user} />}
-          {activeTab === 'persetujuan' && user?.role === 'superadmin' && <PersetujuanPoskoView user={user} />}
+          {activeTab === 'posko' && user?.role === 'superadmin' && <DataPoskoView user={user} />}
           {activeTab === 'pengungsi' && <PengungsiView user={user} />}
           {activeTab === 'logistik' && <LogistikView user={user} />}
           {activeTab === 'peta' && <PetaView user={user} />}
@@ -199,12 +199,16 @@ function MapZoomTo({ position, zoom = 15 }: { position: [number, number] | null,
   return null;
 }
 
-function PersetujuanPoskoView({ user }: { user: any }) {
+function DataPoskoView({ user }: { user: any }) {
   const [poskoList, setPoskoList] = useState<any[]>([]);
+  const [activeSubTab, setActiveSubTab] = useState<'terdaftar' | 'persetujuan'>('terdaftar');
+  
+  // Edit state
+  const [editingPosko, setEditingPosko] = useState<any | null>(null);
 
   const fetchPosko = () => {
     db.posko.getAll().then(data => {
-      setPoskoList(data.filter((p: any) => p.status_approval === 'pending'));
+      setPoskoList(data);
     });
   };
 
@@ -226,41 +230,186 @@ function PersetujuanPoskoView({ user }: { user: any }) {
     });
   };
 
+  const handleDelete = (id: number | string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus posko ini beserta seluruh datanya?')) {
+      db.posko.delete(id).then(() => {
+        alert('Posko berhasil dihapus.');
+        fetchPosko();
+      });
+    }
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingPosko) {
+      db.posko.update(editingPosko.id, {
+        name: editingPosko.name,
+        max_capacity: Number(editingPosko.max_capacity)
+      }).then(() => {
+        alert('Profil posko berhasil diperbarui.');
+        setEditingPosko(null);
+        fetchPosko();
+      });
+    }
+  };
+
+  const approvedPoskos = poskoList.filter(p => p.status_approval === 'approved');
+  const pendingPoskos = poskoList.filter(p => p.status_approval === 'pending');
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <h2 className="text-2xl font-bold text-slate-800">Persetujuan Posko Baru</h2>
-        <p className="text-slate-500 mt-1">Daftar pengajuan profil posko baru dari relawan yang membutuhkan persetujuan.</p>
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Manajemen Data Posko</h2>
+          <p className="text-slate-500 mt-1">Kelola daftar seluruh posko penampungan bencana yang terdaftar atau setujui pengajuan baru.</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200">
+        <button
+          onClick={() => setActiveSubTab('terdaftar')}
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            activeSubTab === 'terdaftar'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Posko Terdaftar
+          <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">
+            {approvedPoskos.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveSubTab('persetujuan')}
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            activeSubTab === 'persetujuan'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Pengajuan Baru
+          {pendingPoskos.length > 0 && (
+            <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-bold">
+              {pendingPoskos.length}
+            </span>
+          )}
+        </button>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <div className="space-y-4">
-          {poskoList.length > 0 ? (
-            poskoList.map(p => (
-              <div key={p.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-5 bg-amber-50/30 border border-amber-100 rounded-2xl gap-4">
-                <div className="space-y-1">
-                  <h4 className="font-bold text-slate-900 text-lg">{p.name}</h4>
-                  <p className="text-sm text-slate-600">Koordinat: <strong className="text-slate-800">{p.lat.toFixed(6)}, {p.lng.toFixed(6)}</strong></p>
-                  <p className="text-xs text-slate-500">Kapasitas Maksimal: {p.max_capacity ?? p.maxCapacity ?? 100} orang</p>
-                </div>
-                <div className="flex gap-3 w-full md:w-auto">
-                  <button onClick={() => handleApprove(p.id)} className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
-                    Setujui (Approve)
-                  </button>
-                  <button onClick={() => handleReject(p.id)} className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
-                    Tolak
-                  </button>
-                </div>
+        {activeSubTab === 'terdaftar' ? (
+          <div className="space-y-4">
+            {approvedPoskos.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {approvedPoskos.map(p => (
+                  <div key={p.id} className="p-5 border border-slate-100 rounded-2xl hover:border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between bg-slate-50/50">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-bold text-slate-900 text-lg leading-tight">{p.name}</h4>
+                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
+                          Aktif
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 mt-2">Kapasitas Maksimal: <strong className="text-slate-800">{p.max_capacity ?? p.maxCapacity ?? 100} orang</strong></p>
+                      <p className="text-xs text-slate-400 mt-1">Koordinat: {Number(p.lat).toFixed(6)}, {Number(p.lng).toFixed(6)}</p>
+                    </div>
+                    <div className="flex gap-2 mt-6 pt-4 border-t border-slate-100 justify-end">
+                      <button
+                        onClick={() => setEditingPosko({ id: p.id, name: p.name, max_capacity: p.max_capacity ?? p.maxCapacity ?? 100 })}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Hapus
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))
-          ) : (
-            <div className="text-center py-12 bg-slate-50 border border-slate-100 border-dashed rounded-2xl">
-              <ShieldAlert className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">Tidak ada pengajuan posko baru yang pending.</p>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="text-center py-12 border border-slate-100 border-dashed rounded-2xl">
+                <p className="text-slate-500 font-medium">Belum ada posko terdaftar.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {pendingPoskos.length > 0 ? (
+              pendingPoskos.map(p => (
+                <div key={p.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-5 bg-amber-50/30 border border-amber-100 rounded-2xl gap-4">
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-slate-900 text-lg">{p.name}</h4>
+                    <p className="text-sm text-slate-600">Koordinat: <strong className="text-slate-800">{Number(p.lat).toFixed(6)}, {Number(p.lng).toFixed(6)}</strong></p>
+                    <p className="text-xs text-slate-500">Kapasitas Maksimal: {p.max_capacity ?? p.maxCapacity ?? 100} orang</p>
+                  </div>
+                  <div className="flex gap-3 w-full md:w-auto">
+                    <button onClick={() => handleApprove(p.id)} className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
+                      Setujui (Approve)
+                    </button>
+                    <button onClick={() => handleReject(p.id)} className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
+                      Tolak
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 bg-slate-50 border border-slate-100 border-dashed rounded-2xl">
+                <ShieldAlert className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">Tidak ada pengajuan posko baru yang pending.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Edit Modal */}
+      {editingPosko && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-slate-800">Edit Profil Posko</h3>
+              <button onClick={() => setEditingPosko(null)} className="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Posko</label>
+                <input
+                  required
+                  type="text"
+                  value={editingPosko.name}
+                  onChange={e => setEditingPosko({ ...editingPosko, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Kapasitas Maksimal (Orang)</label>
+                <input
+                  required
+                  type="number"
+                  value={editingPosko.max_capacity}
+                  onChange={e => setEditingPosko({ ...editingPosko, max_capacity: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 p-4 -mx-6 -mb-6">
+                <button type="button" onClick={() => setEditingPosko(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">
+                  Batal
+                </button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
