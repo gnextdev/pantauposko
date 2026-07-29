@@ -121,6 +121,7 @@ function AdminDashboard({ user, onLogout }: { user: any, onLogout: () => void })
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <NavItem icon={<LayoutDashboard />} label="Dashboard" isActive={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+          {user?.role === 'superadmin' && <NavItem icon={<ShieldAlert />} label="Persetujuan Posko" isActive={activeTab === 'persetujuan'} onClick={() => setActiveTab('persetujuan')} />}
           <NavItem icon={<Tent />} label="Pengungsi" isActive={activeTab === 'pengungsi'} onClick={() => setActiveTab('pengungsi')} />
           <NavItem icon={<Package />} label="Logistik" isActive={activeTab === 'logistik'} onClick={() => setActiveTab('logistik')} />
           <NavItem icon={<Users />} label="Relawan" isActive={activeTab === 'relawan'} onClick={() => setActiveTab('relawan')} />
@@ -157,6 +158,7 @@ function AdminDashboard({ user, onLogout }: { user: any, onLogout: () => void })
         </header>
         <div className="flex-1 overflow-auto p-6">
           {activeTab === 'dashboard' && <DashboardView user={user} />}
+          {activeTab === 'persetujuan' && user?.role === 'superadmin' && <PersetujuanPoskoView user={user} />}
           {activeTab === 'pengungsi' && <PengungsiView user={user} />}
           {activeTab === 'logistik' && <LogistikView user={user} />}
           {activeTab === 'peta' && <PetaView user={user} />}
@@ -195,6 +197,72 @@ function MapZoomTo({ position, zoom = 15 }: { position: [number, number] | null,
     }
   }, [position, zoom, map]);
   return null;
+}
+
+function PersetujuanPoskoView({ user }: { user: any }) {
+  const [poskoList, setPoskoList] = useState<any[]>([]);
+
+  const fetchPosko = () => {
+    db.posko.getAll().then(data => {
+      setPoskoList(data.filter((p: any) => p.status_approval === 'pending'));
+    });
+  };
+
+  useEffect(() => {
+    fetchPosko();
+  }, []);
+
+  const handleApprove = (id: number | string) => {
+    db.posko.update(id, { status_approval: 'approved' }).then(() => {
+      alert('Posko berhasil disetujui!');
+      fetchPosko();
+    });
+  };
+
+  const handleReject = (id: number | string) => {
+    db.posko.update(id, { status_approval: 'rejected' }).then(() => {
+      alert('Pengajuan posko ditolak.');
+      fetchPosko();
+    });
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 className="text-2xl font-bold text-slate-800">Persetujuan Posko Baru</h2>
+        <p className="text-slate-500 mt-1">Daftar pengajuan profil posko baru dari relawan yang membutuhkan persetujuan.</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="space-y-4">
+          {poskoList.length > 0 ? (
+            poskoList.map(p => (
+              <div key={p.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-5 bg-amber-50/30 border border-amber-100 rounded-2xl gap-4">
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-900 text-lg">{p.name}</h4>
+                  <p className="text-sm text-slate-600">Koordinat: <strong className="text-slate-800">{p.lat.toFixed(6)}, {p.lng.toFixed(6)}</strong></p>
+                  <p className="text-xs text-slate-500">Kapasitas Maksimal: {p.max_capacity ?? p.maxCapacity ?? 100} orang</p>
+                </div>
+                <div className="flex gap-3 w-full md:w-auto">
+                  <button onClick={() => handleApprove(p.id)} className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
+                    Setujui (Approve)
+                  </button>
+                  <button onClick={() => handleReject(p.id)} className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
+                    Tolak
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-12 bg-slate-50 border border-slate-100 border-dashed rounded-2xl">
+              <ShieldAlert className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">Tidak ada pengajuan posko baru yang pending.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function DashboardView({ user }: { user: any }) {
