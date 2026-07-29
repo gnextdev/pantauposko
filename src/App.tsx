@@ -2347,53 +2347,55 @@ function PublicPortal({ onLogin }: { onLogin: (user: any) => void }) {
       {/* Modal Pengajuan Posko Baru */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="text-xl font-bold text-slate-800">Pengajuan Posko Baru</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label htmlFor="namaPosko" className="block text-sm font-medium text-slate-700 mb-1">Nama Posko</label>
-                <input required type="text" id="namaPosko" name="namaPosko" value={formData.namaPosko} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Misal: Posko Siaga Warga" />
-              </div>
-              <div>
-                <label htmlFor="lokasi" className="block text-sm font-medium text-slate-700 mb-1">Alamat</label>
-                <input required type="text" id="lokasi" name="lokasi" value={formData.lokasi} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Alamat lengkap posko" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Titik Lokasi Peta</label>
-                <div className="h-48 rounded-lg overflow-hidden border border-slate-200">
-                  <MapContainer 
-                    center={[-6.2088, 106.8456]} 
-                    zoom={11} 
-                    scrollWheelZoom={true} 
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <LocationPicker position={selectedLocation} setPosition={setSelectedLocation} />
-                  </MapContainer>
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div>
+                  <label htmlFor="namaPosko" className="block text-sm font-medium text-slate-700 mb-1">Nama Posko</label>
+                  <input required type="text" id="namaPosko" name="namaPosko" value={formData.namaPosko} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium" placeholder="Misal: Posko Siaga Warga" />
                 </div>
-                {selectedLocation ? (
-                  <p className="text-xs text-emerald-600 mt-1 font-medium">Titik lokasi terpilih.</p>
-                ) : (
-                  <p className="text-xs text-red-500 mt-1 font-medium">* Error: Titik koordinat peta wajib dipilih.</p>
-                )}
+                <div>
+                  <label htmlFor="lokasi" className="block text-sm font-medium text-slate-700 mb-1">Alamat</label>
+                  <input required type="text" id="lokasi" name="lokasi" value={formData.lokasi} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium" placeholder="Alamat lengkap posko" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Titik Lokasi Peta</label>
+                  <div className="h-48 rounded-lg overflow-hidden border border-slate-200">
+                    <MapContainer 
+                      center={[-6.2088, 106.8456]} 
+                      zoom={11} 
+                      scrollWheelZoom={true} 
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <LocationPicker position={selectedLocation} setPosition={setSelectedLocation} />
+                    </MapContainer>
+                  </div>
+                  {selectedLocation ? (
+                    <p className="text-xs text-emerald-600 mt-1 font-medium">Titik lokasi terpilih.</p>
+                  ) : (
+                    <p className="text-xs text-red-500 mt-1 font-medium">* Error: Titik koordinat peta wajib dipilih.</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="estimasiPengungsi" className="block text-sm font-medium text-slate-700 mb-1">Estimasi Pengungsi</label>
+                  <input required type="number" id="estimasiPengungsi" name="estimasiPengungsi" value={formData.estimasiPengungsi} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium" placeholder="Jumlah perkiraan pengungsi" />
+                </div>
+                <div>
+                  <label htmlFor="kontak" className="block text-sm font-medium text-slate-700 mb-1">Kontak Penanggung Jawab</label>
+                  <input required type="text" id="kontak" name="kontak" value={formData.kontak} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium" placeholder="Nomor telepon yang bisa dihubungi" />
+                </div>
               </div>
-              <div>
-                <label htmlFor="estimasiPengungsi" className="block text-sm font-medium text-slate-700 mb-1">Estimasi Pengungsi</label>
-                <input required type="number" id="estimasiPengungsi" name="estimasiPengungsi" value={formData.estimasiPengungsi} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Jumlah perkiraan pengungsi" />
-              </div>
-              <div>
-                <label htmlFor="kontak" className="block text-sm font-medium text-slate-700 mb-1">Kontak Penanggung Jawab</label>
-                <input required type="text" id="kontak" name="kontak" value={formData.kontak} onChange={handleInputChange} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nomor telepon yang bisa dihubungi" />
-              </div>
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                   Batal
                 </button>
